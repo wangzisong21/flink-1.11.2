@@ -84,11 +84,20 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * <p>In the case of a standalone cluster, that cluster-id needs to be configured via {@link
  * HighAvailabilityOptions#HA_CLUSTER_ID}. All nodes with the same cluster id will join the same
  * cluster and participate in the execution of the same set of jobs.
+ *
+ * TODO
+ *  1、选举
+ *     FlinkHa集群，有两个主节点，谁是active？通过选举决定
+ *  2、监听
+ *     每一个从节点都需要知道主节点是谁？主要两个 主节点发送active切换
+ *  协调：基于分布式独占锁
+ *
  */
 public class ZooKeeperHaServices implements HighAvailabilityServices {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHaServices.class);
 
+    // 锁
     private static final String RESOURCE_MANAGER_LEADER_PATH = "/resource_manager_lock";
 
     private static final String DISPATCHER_LEADER_PATH = "/dispatcher_lock";

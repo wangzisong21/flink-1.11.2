@@ -32,10 +32,17 @@ import org.slf4j.Logger;
  */
 public class HeartbeatServices {
 
-    /** Heartbeat interval for the created services. */
+    /**
+     * Heartbeat interval for the created services.
+     * TODO 心跳间隔时间，默认10s，通过heat
+     *  */
     protected final long heartbeatInterval;
 
-    /** Heartbeat timeout for the created services. */
+    /**
+     * Heartbeat timeout for the created services.
+     * TODO 心跳超时时间，默认50s
+     *
+     * */
     protected final long heartbeatTimeout;
 
     public HeartbeatServices(long heartbeatInterval, long heartbeatTimeout) {

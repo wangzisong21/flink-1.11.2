@@ -32,6 +32,8 @@ import java.util.concurrent.TimeUnit;
  * Interface for rpc services. An rpc service is used to start and connect to a {@link RpcEndpoint}.
  * Connecting to a rpc server will return a {@link RpcGateway} which can be used to call remote
  * procedures.
+ * TODO 对应Akka ActorSystem的封装，是管理Actor生命周期的组件
+ *
  */
 public interface RpcService {
 
