@@ -316,6 +316,9 @@ public class PackagedProgram implements AutoCloseable {
         }
 
         try {
+            /**
+             * TODO 通过反映调用业务 main 方法，执行
+             */
             mainMethod.invoke(null, (Object) args);
         } catch (IllegalArgumentException e) {
             throw new ProgramInvocationException(

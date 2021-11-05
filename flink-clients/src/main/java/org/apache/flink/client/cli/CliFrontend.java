@@ -200,9 +200,10 @@ public class CliFrontend {
     }
 
     /**
+     * 执行Run操作
      * Executions the run action.
      *
-     * @param args Command line arguments for the run action.
+     * @param args Command line arguments for the run action. 命令行运行参数，即run后面的配置 -ys 3 -yjm 3072m -ytm 4096
      */
     protected void run(String[] args) throws Exception {
         LOG.info("Running 'run' command.");
@@ -210,12 +211,13 @@ public class CliFrontend {
         final Options commandOptions = CliFrontendParser.getRunCommandOptions();
         final CommandLine commandLine = getCommandLine(commandOptions, args, true);
 
-        // evaluate help flag
+        // evaluate help flag，是否存在help标记
         if (commandLine.hasOption(HELP_OPTION.getOpt())) {
             CliFrontendParser.printHelpForRun(customCommandLines);
             return;
         }
 
+        //获取并获取活跃的命令行参数
         final CustomCommandLine activeCommandLine =
                 validateAndGetActiveCommandLine(checkNotNull(commandLine));
 
@@ -645,6 +647,7 @@ public class CliFrontend {
 
     /**
      * Executes the SAVEPOINT action.
+     * 执行SavePoint保存操作
      *
      * @param args Command line arguments for the savepoint action.
      */
@@ -967,6 +970,8 @@ public class CliFrontend {
     /**
      * Parses the command line arguments and starts the requested action.
      *
+     * 解析命令行参数并启动请求的操作。
+     *
      * @param args command line arguments of the client.
      * @return The return code of the program
      */
@@ -979,7 +984,7 @@ public class CliFrontend {
             return 1;
         }
 
-        // get action
+        // get action 获取命令 flink run -m yarn-cluster
         String action = args[0];
 
         // remove action from parameters
@@ -989,6 +994,7 @@ public class CliFrontend {
             // do action
             switch (action) {
                 case ACTION_RUN:
+                    // 执行run命令
                     run(params);
                     return 0;
                 case ACTION_RUN_APPLICATION:
@@ -1047,18 +1053,24 @@ public class CliFrontend {
         }
     }
 
-    /** Submits the job based on the arguments. */
+    /**
+     * TODO 启动JVM，做程序提交的准备工作，然后执行提交
+     *
+     * 1、准备（jar包，配置，依赖） PackageProgram
+     * 2、通过反射的方式，找到业务代码的main方法
+     * Submits the job based on the arguments.
+     * */
     public static void main(final String[] args) {
         EnvironmentInformation.logEnvironmentInfo(LOG, "Command Line Client", args);
 
-        // 1. find the configuration directory
+        // 1. find the configuration directory 获取配置目录，安装目录/conf
         final String configurationDirectory = getConfigurationDirectoryFromEnv();
 
-        // 2. load the global configuration
+        // 2. load the global configuration 加载全局配置
         final Configuration configuration =
                 GlobalConfiguration.loadConfiguration(configurationDirectory);
 
-        // 3. load the custom command lines
+        // 3. load the custom command lines 加载自定义命令行
         final List<CustomCommandLine> customCommandLines =
                 loadCustomCommandLines(configuration, configurationDirectory);
 
@@ -1066,6 +1078,7 @@ public class CliFrontend {
             final CliFrontend cli = new CliFrontend(configuration, customCommandLines);
 
             SecurityUtils.install(new SecurityConfiguration(cli.configuration));
+            // TODO 执行启动操作
             int retCode =
                     SecurityUtils.getInstalledContext().runSecured(() -> cli.parseParameters(args));
             System.exit(retCode);
@@ -1163,6 +1176,7 @@ public class CliFrontend {
 
     /**
      * Gets the custom command-line for the arguments.
+     * 获取自定义命令行参数 -arg --fen "dev"
      *
      * @param commandLine The input to the command-line.
      * @return custom command-line which is active (may only be one at a time)
