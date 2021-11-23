@@ -123,6 +123,7 @@ public enum ClientUtils {
         final ClassLoader userCodeClassLoader = program.getUserCodeClassLoader();
         final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            // 设置当前的上下文类加载器为用户自定义的类
             Thread.currentThread().setContextClassLoader(userCodeClassLoader);
 
             LOG.info(
@@ -144,6 +145,7 @@ public enum ClientUtils {
                     suppressSysout);
 
             try {
+                // 调用用户的main方法
                 program.invokeInteractiveModeForExecution();
             } finally {
                 ContextEnvironment.unsetAsContext();

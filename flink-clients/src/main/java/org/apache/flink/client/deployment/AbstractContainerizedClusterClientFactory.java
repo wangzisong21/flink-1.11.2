@@ -28,6 +28,7 @@ import org.apache.flink.runtime.jobmanager.JobManagerProcessUtils;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
+ * TODO 获取集群配置参数
  * An abstract {@link ClusterClientFactory} containing some common implementations for different
  * containerized deployment clusters.
  */
@@ -35,6 +36,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public abstract class AbstractContainerizedClusterClientFactory<ClusterID>
         implements ClusterClientFactory<ClusterID> {
 
+    /**
+     * 返回获取配置参数，Master、Task内存，Slot数量
+     * @param configuration containing the configuration options relevant for the {@link
+     *     ClusterSpecification}
+     * @return
+     */
     @Override
     public ClusterSpecification getClusterSpecification(Configuration configuration) {
         checkNotNull(configuration);

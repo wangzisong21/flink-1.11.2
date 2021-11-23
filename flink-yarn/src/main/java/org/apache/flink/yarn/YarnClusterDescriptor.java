@@ -433,15 +433,26 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         }
     }
 
+    /**
+     * 部署集群
+     * @param clusterSpecification Initial cluster specification with which the Flink cluster is
+     *     launched
+     * @param jobGraph JobGraph with which the job cluster is started
+     * @param detached true if the cluster should be stopped after the job completion without
+     *     serving the result, otherwise false
+     * @return
+     * @throws ClusterDeploymentException
+     */
     @Override
     public ClusterClientProvider<ApplicationId> deployJobCluster(
             ClusterSpecification clusterSpecification, JobGraph jobGraph, boolean detached)
             throws ClusterDeploymentException {
         try {
+            // 内部部署
             return deployInternal(
                     clusterSpecification,
                     "Flink per-job cluster",
-                    getYarnJobClusterEntrypoint(),
+                    getYarnJobClusterEntrypoint(), //获取AM的入口
                     jobGraph,
                     detached);
         } catch (Exception e) {
@@ -474,6 +485,8 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
     /**
      * This method will block until the ApplicationMaster/JobManager have been deployed on YARN.
      *
+     * 该方法将阻塞,直到应用程序主/作业管理器已经部署在YARN。
+     *
      * @param clusterSpecification Initial cluster specification for the Flink cluster to be
      *     deployed
      * @param applicationName name of the Yarn application to start
@@ -504,27 +517,28 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         isReadyForDeployment(clusterSpecification);
 
         // ------------------ Check if the specified queue exists --------------------
-
+        // 检查是否存在指定的yarn队列，-yqu "root.queue_realtime"
         checkYarnQueues(yarnClient);
 
         // ------------------ Check if the YARN ClusterClient has the requested resources
         // --------------
 
-        // Create application via yarnClient
+        // Create application via yarnClient   通过Yarn客户端创建application
         final YarnClientApplication yarnApplication = yarnClient.createApplication();
         final GetNewApplicationResponse appResponse = yarnApplication.getNewApplicationResponse();
-
+        // 获取最大的资源能力
         Resource maxRes = appResponse.getMaximumResourceCapability();
 
         final ClusterResourceDescription freeClusterMem;
         try {
+            //获得当前可用的集群资源
             freeClusterMem = getCurrentFreeClusterResources(yarnClient);
         } catch (YarnException | IOException e) {
             failSessionDuringDeployment(yarnClient, yarnApplication);
             throw new YarnDeploymentException(
                     "Could not retrieve information about free cluster resources.", e);
         }
-
+        //获取最小容器内存
         final int yarnMinAllocationMB =
                 yarnConfiguration.getInt(YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB, 0);
 
@@ -547,6 +561,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
         flinkConfiguration.setString(ClusterEntrypoint.EXECUTION_MODE, executionMode.toString());
 
+        // TODO 启动AppMaster
         ApplicationReport report =
                 startAppMaster(
                         flinkConfiguration,
@@ -558,6 +573,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                         validClusterSpecification);
 
         // print the application id for user to cancel themselves.
+        // 打印用户取消自己的应用程序id。 xxStream.print()
         if (detached) {
             final ApplicationId yarnApplicationId = report.getApplicationId();
             logDetachedClusterInformation(yarnApplicationId, LOG);
@@ -719,15 +735,14 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
             ClusterSpecification clusterSpecification)
             throws Exception {
 
-        // ------------------ Initialize the file systems -------------------------
+        // ------------------ 初始化文件系统 -------------------------
 
         org.apache.flink.core.fs.FileSystem.initialize(
                 configuration, PluginUtils.createPluginManagerFromRootFolder(configuration));
 
         final FileSystem fs = FileSystem.get(yarnConfiguration);
 
-        // hard coded check for the GoogleHDFS client because its not overriding the getScheme()
-        // method.
+        // hard coded check for the GoogleHDFS client because its not overriding the getScheme() method.
         if (!fs.getClass().getSimpleName().equals("GoogleHadoopFileSystem")
                 && fs.getScheme().startsWith("file")) {
             LOG.warn(
@@ -742,7 +757,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
         final List<Path> providedLibDirs =
                 Utils.getQualifiedRemoteSharedPaths(configuration, yarnConfiguration);
-
+        // 文件上传工具类
         final YarnApplicationFileUploader fileUploader =
                 YarnApplicationFileUploader.from(
                         fs,
@@ -751,7 +766,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                         appContext.getApplicationId(),
                         getFileReplication());
 
-        // The files need to be shipped and added to classpath.
+        // 需要发送的文件并将其添加到类路径中。
+
+        // 日志的配置文件、lib/目录下除了dist的 jar 包
         Set<File> systemShipFiles = new HashSet<>(shipFiles.size());
         for (File file : shipFiles) {
             systemShipFiles.add(file.getAbsoluteFile());
@@ -765,13 +782,15 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
         // Set-up ApplicationSubmissionContext for the application
 
+        // 获取appid
         final ApplicationId appId = appContext.getApplicationId();
 
         // ------------------ Add Zookeeper namespace to local flinkConfiguraton ------
+        // 添加zookeeper命名空间到本到Flink配置
         setHAClusterIdIfNotSet(configuration, appId);
-
+        // 激活了高可用
         if (HighAvailabilityMode.isHighAvailabilityModeActivated(configuration)) {
-            // activate re-execution of failed applications
+            // 激活re-execution失败的应用程序，yarn重试次数默认是2
             appContext.setMaxAppAttempts(
                     configuration.getInteger(
                             YarnConfigOptions.APPLICATION_ATTEMPTS.key(),
@@ -779,11 +798,12 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
             activateHighAvailabilitySupport(appContext);
         } else {
-            // set number of application retries to 1 in the default case
+            // 非高可用失败重试次数默认为1
             appContext.setMaxAppAttempts(
                     configuration.getInteger(YarnConfigOptions.APPLICATION_ATTEMPTS.key(), 1));
         }
 
+        // 用户代码的jar包
         final Set<Path> userJarFiles = new HashSet<>();
         if (jobGraph != null) {
             userJarFiles.addAll(
@@ -800,11 +820,11 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
             userJarFiles.addAll(jarUrls.stream().map(Path::new).collect(Collectors.toSet()));
         }
 
-        // only for per job mode
+        // per-job工作模式
         if (jobGraph != null) {
             for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry :
                     jobGraph.getUserArtifacts().entrySet()) {
-                // only upload local files
+                // 只上传本地文件
                 if (!Utils.isRemotePath(entry.getValue().filePath)) {
                     Path localPath = new Path(entry.getValue().filePath);
                     Tuple2<Path, Long> remoteFileInfo =
@@ -834,7 +854,9 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
 
         // upload and register ship-only files
         // Plugin files only need to be shipped and should not be added to classpath.
+        // plugins/目录下的文件
         if (providedLibDirs == null || providedLibDirs.isEmpty()) {
+
             Set<File> shipOnlyFiles = new HashSet<>();
             addPluginsFoldersToShipFiles(shipOnlyFiles);
             fileUploader.registerMultipleLocalResources(

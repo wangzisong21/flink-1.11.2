@@ -214,6 +214,8 @@ public class PackagedProgram implements AutoCloseable {
     /**
      * This method assumes that the context environment is prepared, or the execution will be a
      * local execution by default.
+     *
+     * 假定上下文环境已准备好，或当前执行本地环境 =》 执行调用
      */
     public void invokeInteractiveModeForExecution() throws ProgramInvocationException {
         callMainMethod(mainClass, args);
@@ -284,6 +286,13 @@ public class PackagedProgram implements AutoCloseable {
                 && Modifier.isPublic(mainMethod.getModifiers());
     }
 
+    /**
+     * 调用main方法
+     *
+     * @param entryClass
+     * @param args
+     * @throws ProgramInvocationException
+     */
     private static void callMainMethod(Class<?> entryClass, String[] args)
             throws ProgramInvocationException {
         Method mainMethod;
@@ -317,7 +326,8 @@ public class PackagedProgram implements AutoCloseable {
 
         try {
             /**
-             * TODO 通过反映调用业务 main 方法，执行
+             * TODO 通过反射调用业务 main 方法，执行
+             *  客户端操作到 => StremExecutionEnvironment.execute()
              */
             mainMethod.invoke(null, (Object) args);
         } catch (IllegalArgumentException e) {

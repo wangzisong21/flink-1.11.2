@@ -37,7 +37,9 @@ import javax.annotation.Nullable;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
-/** A {@link ClusterClientFactory} for a YARN cluster. */
+/**
+ * TODO Yarn集群工厂
+ * A {@link ClusterClientFactory} for a YARN cluster. */
 @Internal
 public class YarnClusterClientFactory
         extends AbstractContainerizedClusterClientFactory<ApplicationId> {
@@ -67,6 +69,11 @@ public class YarnClusterClientFactory
         return clusterId != null ? ConverterUtils.toApplicationId(clusterId) : null;
     }
 
+    /**
+     * 启动Yarn客户端
+     * @param configuration
+     * @return
+     */
     private YarnClusterDescriptor getClusterDescriptor(Configuration configuration) {
         final YarnClient yarnClient = YarnClient.createYarnClient();
         final YarnConfiguration yarnConfiguration = new YarnConfiguration();

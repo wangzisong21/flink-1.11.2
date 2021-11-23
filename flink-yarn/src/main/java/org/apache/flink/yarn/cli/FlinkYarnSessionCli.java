@@ -96,7 +96,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
 
     private static final long CLIENT_POLLING_INTERVAL_MS = 3000L;
 
-    /** The id for the CommandLine interface. */
+    /** The id for the CommandLine interface. 命令行接口ID */
     private static final String ID = "yarn-cluster";
 
     // YARN-session related constants
@@ -385,10 +385,13 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
     @Override
     public boolean isActive(CommandLine commandLine) {
         final String jobManagerOption = commandLine.getOptionValue(addressOption.getOpt(), null);
+        // per-job模式， "flink run -m yarn-cluster"
         final boolean yarnJobManager = ID.equals(jobManagerOption);
+        // Yarn的AppId是否存在flink，即yarn-session模式是否启动了
         final boolean hasYarnAppId =
                 commandLine.hasOption(applicationId.getOpt())
                         || configuration.getOptional(YarnConfigOptions.APPLICATION_ID).isPresent();
+        // Yarn的Executor名称为"yarn-session"或“yarn-per-job"
         final boolean hasYarnExecutor =
                 YarnSessionClusterExecutor.NAME.equalsIgnoreCase(
                                 configuration.get(DeploymentOptions.TARGET))
@@ -421,14 +424,23 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
         baseOptions.addOption(applicationId);
     }
 
+    /**
+     * TODO　应用命令行选项和配置
+     * @param commandLine
+     * @return
+     * @throws FlinkException
+     */
     @Override
     public Configuration applyCommandLineOptionsToConfiguration(CommandLine commandLine)
             throws FlinkException {
         // we ignore the addressOption because it can only contain "yarn-cluster"
+        // 我们忽略地址的选择,因为它只能包含“yarn-cluster”
         final Configuration effectiveConfiguration = new Configuration(configuration);
 
+        //应用配置描述符选项
         applyDescriptorOptionToConfig(commandLine, effectiveConfiguration);
 
+        // 获取ApplicationId
         final ApplicationId applicationId = getApplicationId(commandLine);
         if (applicationId != null) {
             final String zooKeeperNamespace;
@@ -438,16 +450,19 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
                 zooKeeperNamespace =
                         effectiveConfiguration.getString(HA_CLUSTER_ID, applicationId.toString());
             }
-
+            // Zookeeper高可用配置
             effectiveConfiguration.setString(HA_CLUSTER_ID, zooKeeperNamespace);
+            // Yarn ApplicationID配置
             effectiveConfiguration.setString(
                     YarnConfigOptions.APPLICATION_ID, ConverterUtils.toString(applicationId));
+            // 部署选项配置，yarn-session、yarn-per-job
             effectiveConfiguration.setString(
                     DeploymentOptions.TARGET, YarnSessionClusterExecutor.NAME);
         } else {
             effectiveConfiguration.setString(DeploymentOptions.TARGET, YarnJobClusterExecutor.NAME);
         }
 
+        // JobManager配置 -yjm 2048m
         if (commandLine.hasOption(jmMemory.getOpt())) {
             String jmMemoryVal = commandLine.getOptionValue(jmMemory.getOpt());
             if (!MemorySize.MemoryUnit.hasUnit(jmMemoryVal)) {
@@ -457,6 +472,7 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
                     JobManagerOptions.TOTAL_PROCESS_MEMORY, MemorySize.parse(jmMemoryVal));
         }
 
+        // TaskManager配置 -ytm 4096m
         if (commandLine.hasOption(tmMemory.getOpt())) {
             String tmMemoryVal = commandLine.getOptionValue(tmMemory.getOpt());
             if (!MemorySize.MemoryUnit.hasUnit(tmMemoryVal)) {
@@ -466,12 +482,14 @@ public class FlinkYarnSessionCli extends AbstractCustomCommandLine {
                     TaskManagerOptions.TOTAL_PROCESS_MEMORY, MemorySize.parse(tmMemoryVal));
         }
 
+        // slot配置，-ys 3
         if (commandLine.hasOption(slots.getOpt())) {
             effectiveConfiguration.setInteger(
                     TaskManagerOptions.NUM_TASK_SLOTS,
                     Integer.parseInt(commandLine.getOptionValue(slots.getOpt())));
         }
 
+        // 动态参数 -arg --fenv "dev" --fpm 3
         dynamicPropertiesEncoded = encodeDynamicProperties(commandLine);
         if (!dynamicPropertiesEncoded.isEmpty()) {
             Map<String, String> dynProperties = getDynamicProperties(dynamicPropertiesEncoded);

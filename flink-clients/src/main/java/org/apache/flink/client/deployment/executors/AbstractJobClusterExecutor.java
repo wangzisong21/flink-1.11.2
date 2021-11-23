@@ -44,14 +44,14 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * An abstract {@link PipelineExecutor} used to execute {@link Pipeline pipelines} on dedicated
  * (per-job) clusters.
  *
- * @param <ClusterID> the type of the id of the cluster.
+ * @param <ClusterID>     the type of the id of the cluster.
  * @param <ClientFactory> the type of the {@link ClusterClientFactory} used to create/retrieve a
- *     client to the target cluster.
+ *                        client to the target cluster.
  */
 @Internal
 public class AbstractJobClusterExecutor<
-                ClusterID, ClientFactory extends ClusterClientFactory<ClusterID>>
-        implements PipelineExecutor {
+    ClusterID, ClientFactory extends ClusterClientFactory<ClusterID>>
+    implements PipelineExecutor {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractJobClusterExecutor.class);
 
@@ -63,26 +63,26 @@ public class AbstractJobClusterExecutor<
 
     @Override
     public CompletableFuture<JobClient> execute(
-            @Nonnull final Pipeline pipeline, @Nonnull final Configuration configuration)
-            throws Exception {
+        @Nonnull final Pipeline pipeline, @Nonnull final Configuration configuration)
+        throws Exception {
         final JobGraph jobGraph = PipelineExecutorUtils.getJobGraph(pipeline, configuration);
-
+        // 创建并启动Yarn客户端 =》YarnClusterClientFactory
         try (final ClusterDescriptor<ClusterID> clusterDescriptor =
-                clusterClientFactory.createClusterDescriptor(configuration)) {
+                 clusterClientFactory.createClusterDescriptor(configuration)) {
             final ExecutionConfigAccessor configAccessor =
-                    ExecutionConfigAccessor.fromConfiguration(configuration);
-
+                ExecutionConfigAccessor.fromConfiguration(configuration);
+            // 获取集群配置参数 =》AbstractContainerizedClusterClientFactory
             final ClusterSpecification clusterSpecification =
-                    clusterClientFactory.getClusterSpecification(configuration);
-
+                clusterClientFactory.getClusterSpecification(configuration);
+            // 部署集群
             final ClusterClientProvider<ClusterID> clusterClientProvider =
-                    clusterDescriptor.deployJobCluster(
-                            clusterSpecification, jobGraph, configAccessor.getDetachedMode());
+                clusterDescriptor.deployJobCluster(
+                    clusterSpecification, jobGraph, configAccessor.getDetachedMode());
             LOG.info("Job has been submitted with JobID " + jobGraph.getJobID());
 
             return CompletableFuture.completedFuture(
-                    new ClusterClientJobClientAdapter<>(
-                            clusterClientProvider, jobGraph.getJobID()));
+                new ClusterClientJobClientAdapter<>(
+                    clusterClientProvider, jobGraph.getJobID()));
         }
     }
 }

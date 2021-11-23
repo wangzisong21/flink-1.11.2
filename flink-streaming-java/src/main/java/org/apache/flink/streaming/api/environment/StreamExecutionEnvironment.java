@@ -1621,6 +1621,7 @@ public class StreamExecutionEnvironment {
     }
 
     /**
+     * TODO Job执行
      * Triggers the program execution. The environment will execute all parts of the program that
      * have resulted in a "sink" operation. Sink operations are for example printing results or
      * forwarding them to a message queue.
@@ -1744,6 +1745,8 @@ public class StreamExecutionEnvironment {
     }
 
     /**
+     * TODO 异步触发程序执行
+     *
      * Triggers the program execution asynchronously. The environment will execute all parts of the
      * program that have resulted in a "sink" operation. Sink operations are for example printing
      * results or forwarding them to a message queue.
@@ -1760,6 +1763,7 @@ public class StreamExecutionEnvironment {
                 configuration.get(DeploymentOptions.TARGET),
                 "No execution.target specified in your configuration file.");
 
+        // 根据提交模式，匹配factory
         final PipelineExecutorFactory executorFactory =
                 executorServiceLoader.getExecutorFactory(configuration);
 
@@ -1767,7 +1771,7 @@ public class StreamExecutionEnvironment {
                 executorFactory,
                 "Cannot find compatible factory for specified execution.target (=%s)",
                 configuration.get(DeploymentOptions.TARGET));
-
+        // 选择对应的executor执行任务
         CompletableFuture<JobClient> jobClientFuture =
                 executorFactory.getExecutor(configuration).execute(streamGraph, configuration);
 
